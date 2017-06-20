@@ -1,0 +1,28 @@
+{
+  "name": "salvo",
+  "version": "0.2.0",
+  "description": "A JSON-based scripting and automation platform.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NickDMansfield/salvo.git"
+  },
+  "keywords": [
+    "automation"
+  ],
+  "author": "Nicholas Mansfield",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NickDMansfield/salvo/issues"
+  },
+  "homepage": "https://github.com/NickDMansfield/salvo#readme",
+  "dependencies": {
+    "commander": "^2.9.0",
+    "json-query": "^2.2.2",
+    "node-cmd": "^3.0.0",
+    "node-rest-client": "^3.1.0"
+  }
+}
