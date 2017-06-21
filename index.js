@@ -1,15 +1,16 @@
 'use strict';
 
 const program = require('commander');
-const jsonQuery = require('json-query');
 const _ = require('lodash');
 const fs = require('fs');
 const cmd = require('node-cmd');
 const Promise = require('bluebird');
 const Client = require('node-rest-client').Client;
 const rClient = new Client();
-const request = require('request');
 const util = require('util');
+const xml2js = require('xml2js');
+const xmlBuilder = new xml2js.Builder();
+const xmlParser = new xml2js.Parser();
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -62,12 +63,12 @@ const makeRestCall = callProps => {
   return new Promise(callFinished => {
     if (callProps.method.toLowerCase() === 'get') {
       return rClient.get(callProps.target, requestArgs, (data, response) => {
-        console.log(`CALL DATA get= ${data}`);
+    //    console.log(`CALL DATA get= ${data}`);
         return callFinished([data, response]);
       });
     }
     return rClient.post(callProps.target, requestArgs, (data, response) => {
-          console.log(`CALL DATA get= ${JSON.stringify(data)}`);
+  //        console.log(`CALL DATA get= ${JSON.stringify(data)}`);
       return callFinished([data, response]);
     });
   })
@@ -87,9 +88,9 @@ const substituteValues = object => {
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
         const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         if (wIndex != -1) {
-          console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+    //      console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
-          console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+    //      console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
         }
       }
     }
@@ -116,11 +117,9 @@ const runAction = (actions, callback, _runCount) => {
             for (let zz = 0; zz < action.values.arguments.length; ++zz) {
               terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
             }
-
           }
-
         return cmd.get(terminalCommand, function(resp) {
-          console.log(`NODE res:${(resp)} `);
+    //      console.log(`NODE res:${(resp)} `);
           if (action.capture.length > 0) {
             captureData(action, resp);
           }
@@ -145,8 +144,61 @@ const runAction = (actions, callback, _runCount) => {
             if (dataOperations.indexOf('jsonstringify') > -1) {
               writeData = JSON.stringify(writeData);
             }
-            return fs.writeFile('lolo.txt', writeData, () => {
+            return fs.writeFile(action.values.fileLocation, writeData, () => {
               return resolve2();
+            });
+          })
+          .then(() => {
+            return actionPromise();
+          });
+        }
+        if (action.type === 'update-file') {
+          return new Promise(resolve2 => {
+            const dataOperations = _.map(action.values.dataOperations, op => {
+              return op.toLowerCase();
+            });
+            if (!fs.existsSync(action.values.fileLocation)) {
+              console.log('Exiting this step early, as the file does not exist');
+            }
+            return new Promise(resolveRead => {
+              return fs.readFile(action.values.fileLocation, 'utf8', (err, readData) => {
+                if (err) {
+                  return false;
+                }
+                let writeData = readData || '';
+            //    console.log(readData);
+                if (dataOperations.indexOf('jsonstringify') > -1) {
+                  writeData = JSON.stringify(readData);
+                }
+
+                if (action.values.fileType.toLowerCase() === 'xml') {
+                  return xmlParser.parseString(readData, (err, parsedXML) => {
+                    if (err) {
+                      console.log(`Error reading file:  ${err}`);
+                      return resolveRead(false);
+                    }
+                    for (let zz = 0; zz < action.values.data.length; ++zz) {
+                      const dataToInsert = action.values.data[zz];
+                      _.set(parsedXML, dataToInsert.path, dataToInsert.value);
+                    }
+                    return resolveRead(xmlBuilder.buildObject(parsedXML));
+                  });
+                }
+              // Assumes text if no other type is supplied
+                for (let zz = 0; zz < action.values.data.length; ++zz) {
+                  writeData += action.values.data[zz];
+                }
+                return resolveRead(writeData);
+              });
+            })
+            .then(writeData => {
+              if (!writeData) {
+                resolve2();
+              }
+              console.log(`DATA TO  WRITE \r\n ${writeData}`);
+              return fs.writeFile(action.values.fileLocation, writeData, () => {
+                return resolve2();
+              });
             });
           })
           .then(() => {
@@ -162,7 +214,7 @@ const runAction = (actions, callback, _runCount) => {
             return runAction(actions, callback, runCount + 1)
           }
           else {
-            callback();
+            return callback();
           }
         }, action.post_delay);
       });
@@ -190,7 +242,7 @@ const runOperation = (operation, callback, _runCount) => {
       }
       callback();
     }, operation.post_delay_loop);
-  })
+  });
   }, operation.pre_delay_loop);
 };
 
@@ -216,17 +268,17 @@ return Promise.map(salvoScript.preloads, preloadFile => {
   console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);
   return new Promise(resolve => {
 
-    for (let loadedData of loadedFiles) {
+    for (const loadedData of loadedFiles) {
       let dataObject = loadedData;
       if (loadedData.hasOwnProperty('default')) {
         // File was a JS file so properties are accessed through default property
         dataObject = loadedData.default;
       }
-      for (let key of Object.keys(dataObject)) {
+      for (const key of Object.keys(dataObject)) {
         storedValues[key] = dataObject[key];
       }
     }
-    console.log(`preserved values: ${JSON.stringify(storedValues)}`);
+//    console.log(`preserved values: ${JSON.stringify(storedValues)}`);
     resolve();
   })
   .then(() => {
@@ -236,7 +288,7 @@ return Promise.map(salvoScript.preloads, preloadFile => {
       console.log(`Beginning operation ${operation.name}`);
       return new Promise(opResolve => {
         // Make a promise to handle pre-operation timing delay in each object
-        setTimeout(function() {
+        setTimeout(() => {
           // The following code executes after the pre-operation delay
           console.log(`Finished pre-operation delay on ${operation.name}`);
             // Run once for each iteration
