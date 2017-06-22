@@ -100,7 +100,6 @@ const makeRestCall = callProps => {
 
 const substituteValues = object => {
   for (let objProp in object) {
-    console.log(`TYPE OF OBJECT PROP: ${typeof object[objProp]}`);
     if ((typeof object[objProp]).toLowerCase() === 'object') {
       objProp = substituteValues(object[objProp]);
     } else if (typeof object[objProp] === 'string') {
@@ -110,9 +109,9 @@ const substituteValues = object => {
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
         const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         if (wIndex != -1) {
-          console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
-          console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+        //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
         }
       }
     }
