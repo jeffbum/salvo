@@ -47,10 +47,31 @@ const captureData = (action, respSet) => {
         }
         storedValues[captureItem.target].push(foundData);
       }
-      console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+  //    console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
     }
   return true;
 };
+
+const updateVar = ((path, data, action) => {
+
+  if (action === 'increment') {
+    if (typeof storedValues[path] === 'string') {
+      storedValues[path] = storedValues[path].toString() + data;
+    } else {
+      storedValues[path] = Number(storedValues[path]) + data;
+    }
+  }
+
+  if (action === 'push') {
+    if (!storedValues[path]) {
+      storedValues[path] = [];
+    }
+    storedValues[path].push(data);
+  }
+  if (action === 'set') {
+    storedValues[path] = data;
+  }
+});
 
 const makeRestCall = callProps => {
   const requestArgs = {
@@ -79,6 +100,7 @@ const makeRestCall = callProps => {
 
 const substituteValues = object => {
   for (let objProp in object) {
+    console.log(`TYPE OF OBJECT PROP: ${typeof object[objProp]}`);
     if ((typeof object[objProp]).toLowerCase() === 'object') {
       objProp = substituteValues(object[objProp]);
     } else if (typeof object[objProp] === 'string') {
@@ -88,9 +110,9 @@ const substituteValues = object => {
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
         const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
         if (wIndex != -1) {
-    //      console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
+          console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
-    //      console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
+          console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
         }
       }
     }
@@ -100,13 +122,14 @@ const substituteValues = object => {
 const runAction = (actions, callback, _runCount) => {
     const runCount = _runCount || 0;
     const action = actions[runCount];
+    const backupAction = JSON.parse(JSON.stringify(action));
     substituteValues(action);
     return new Promise(preDelay => {
       setTimeout(function () {
         console.log(`Pre-action delay finished for ${action.name}`);
         // Execute action depending on type
         preDelay();
-      },action.pre_delay);
+      }, action.pre_delay);
     })
     .then(() => {
       return new Promise(actionPromise => {
@@ -125,6 +148,11 @@ const runAction = (actions, callback, _runCount) => {
           }
           return actionPromise();
         });
+        }
+
+        if (action.type === 'set-var') {
+          updateVar(action.values.target, action.values.data, action.values.action);
+          return actionPromise();
         }
 
         if (action.type === 'web-call') {
@@ -211,6 +239,7 @@ const runAction = (actions, callback, _runCount) => {
         setTimeout(function() {
           console.log(`Post-delay finished for ${action.name}`);
           if (runCount < actions.length - 1) {
+            actions[runCount] = backupAction;
             return runAction(actions, callback, runCount + 1)
           }
           else {
