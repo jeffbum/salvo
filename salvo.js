@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 'use strict';
 
 const program = require('commander');
@@ -18,7 +20,7 @@ const storedValues = {
 }
 
 const captureData = (action, respSet) => {
-    const data = respSet[0];
+  const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
     for (const captureItem of action.capture) {
       // First, we get the proper data
       let foundData = null;
@@ -34,7 +36,7 @@ const captureData = (action, respSet) => {
       if (captureItem.type === 'regex') {
         // There is an assumption that the first index will just be the match, and everything else is the capture
         const capRegex = new RegExp(captureItem.source);
-        foundData = capRegex.exec(data);
+        foundData = captureItem.regexIndex ? capRegex.exec(data)[captureItem.regexIndex] : capRegex.exec(data);
       }
 
       // Now that the data is set, we save it
@@ -47,7 +49,7 @@ const captureData = (action, respSet) => {
         }
         storedValues[captureItem.target].push(foundData);
       }
-  //    console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
+      console.log(`STORED VALUES \r\n ${util.inspect(storedValues)}`);
     }
   return true;
 };
@@ -140,13 +142,14 @@ const runAction = (actions, callback, _runCount) => {
               terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
             }
           }
-        return cmd.get(terminalCommand, function(resp) {
-    //      console.log(`NODE res:${(resp)} `);
-          if (action.capture.length > 0) {
-            captureData(action, resp);
-          }
-          return actionPromise();
-        });
+          console.log(`TERMINAL COMMAND: ${terminalCommand}`);
+          return cmd.get(terminalCommand, (err, resp) => {
+            console.log(`NODE res:${(resp)} `);
+            if (action.capture && action.capture.length > 0) {
+              captureData(action, resp);
+            }
+            return actionPromise();
+          });
         }
 
         if (action.type === 'set-var') {
@@ -171,7 +174,7 @@ const runAction = (actions, callback, _runCount) => {
             if (dataOperations.indexOf('jsonstringify') > -1) {
               writeData = JSON.stringify(writeData);
             }
-            return fs.writeFile(action.values.fileLocation, writeData, () => {
+            return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
               return resolve2();
             });
           })
@@ -184,11 +187,11 @@ const runAction = (actions, callback, _runCount) => {
             const dataOperations = _.map(action.values.dataOperations, op => {
               return op.toLowerCase();
             });
-            if (!fs.existsSync(action.values.fileLocation)) {
-              console.log('Exiting this step early, as the file does not exist');
+            if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+              console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
             }
             return new Promise(resolveRead => {
-              return fs.readFile(action.values.fileLocation, 'utf8', (err, readData) => {
+              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, readData) => {
                 if (err) {
                   return false;
                 }
@@ -223,7 +226,7 @@ const runAction = (actions, callback, _runCount) => {
                 resolve2();
               }
               console.log(`DATA TO  WRITE \r\n ${writeData}`);
-              return fs.writeFile(action.values.fileLocation, writeData, () => {
+              return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
             });
@@ -284,7 +287,7 @@ if (!program.target) {
   process.exit();
 }
 
-const salvoScript = require(program.target);
+const salvoScript = require(`${process.cwd()}/${program.target}`);
 // Requires format -t './filename'
 console.log(`Beginning salvo ${salvoScript.name}`);
 

@@ -1,3 +1,6 @@
 XML support
 JSON insertion
 appending text
+when setting vars, accept array of var values
+support express calling of scripts (may not be necessary considering terminal command)
+add scaled logging class, so logs can be controlled via a setting
