@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/NickDMansfield/salvo#readme",
   "dependencies": {
+    "box-node-sdk": "^1.7.0",
     "commander": "^2.9.0",
     "json-query": "^2.2.2",
     "node-cmd": "^3.0.0",

@@ -13,11 +13,33 @@ const util = require('util');
 const xml2js = require('xml2js');
 const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
+const BoxSDK = require('box-node-sdk');
+const salvoConfig = require('./config.json');
+
+// Set up initial vars
+let boxSDKInstance = null;
+let boxClient = null;
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   access_token:'TEMPORARY_TOKEN'
 }
+
+  // Box methods
+const initializeBoxClient = ((clientInfo, clientType, userDetails) => {
+  // clientType supports 'app-auth' and 'anonymous'
+  boxSDKInstance = new BoxSDK({
+    clientID: clientInfo.clientID,
+    clientSecret: clientInfo.clientSecret,
+    appAuth: clientInfo.appAuth
+  });
+  if (clientType === 'app-auth') {
+    boxClient = boxSDKInstance.getAppAuthClient('user', userDetails.userId);
+  }
+  if (clientType === 'anonymous') {
+    boxClient = boxSDKInstance.getAnonymousClient();
+  }
+});
 
 const captureData = (action, respSet) => {
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
@@ -110,7 +132,7 @@ const substituteValues = object => {
         const matchWord = valKeys[zz];
         const storedValue = typeof storedValues[matchWord] === 'object' ? JSON.stringify(storedValues[matchWord]) : storedValues[matchWord];
         const wIndex = object[objProp].indexOf('}>}' + matchWord + '{<{');
-        if (wIndex != -1) {
+        if (wIndex !== -1) {
         //  console.log(`match found in string ${object[objProp]} \r\n for word ${matchWord}`);
           object[objProp] = object[objProp].replace('}>}' + matchWord + '{<{', storedValue);
         //  console.log(`replaced string ${object[objProp]} \r\n for word ${matchWord}`);
@@ -121,135 +143,150 @@ const substituteValues = object => {
 };
 
 const runAction = (actions, callback, _runCount) => {
-    const runCount = _runCount || 0;
-    const action = actions[runCount];
-    const backupAction = JSON.parse(JSON.stringify(action));
-    substituteValues(action);
-    return new Promise(preDelay => {
-      setTimeout(function () {
-        console.log(`Pre-action delay finished for ${action.name}`);
-        // Execute action depending on type
-        preDelay();
-      }, action.pre_delay);
-    })
-    .then(() => {
-      return new Promise(actionPromise => {
-        if (action.type === 'terminal') {
-          let terminalCommand = action.values.text;
-          if (action.values.arguments && action.values.arguments.length > 0) {
-            // Check for and assign arguments
-            for (let zz = 0; zz < action.values.arguments.length; ++zz) {
-              terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
-            }
+  const runCount = _runCount || 0;
+  const action = actions[runCount];
+  const backupAction = JSON.parse(JSON.stringify(action));
+  substituteValues(action);
+  return new Promise(preDelay => {
+    setTimeout(function () {
+      console.log(`Pre-action delay finished for ${action.name}`);
+      // Execute action depending on type
+      preDelay();
+    }, action.pre_delay);
+  })
+  .then(() => {
+    return new Promise(actionPromise => {
+      if (action.type === 'terminal') {
+        let terminalCommand = action.values.text;
+        if (action.values.arguments && action.values.arguments.length > 0) {
+          // Check for and assign arguments
+          for (let zz = 0; zz < action.values.arguments.length; ++zz) {
+            terminalCommand += ' ' + action.values.arguments[zz].key + action.values.arguments[zz].value;
           }
-          console.log(`TERMINAL COMMAND: ${terminalCommand}`);
-          return cmd.get(terminalCommand, (err, resp) => {
-            console.log(`NODE res:${(resp)} `);
-            if (action.capture && action.capture.length > 0) {
-              captureData(action, resp);
-            }
-            return actionPromise();
-          });
         }
-
-        if (action.type === 'set-var') {
-          updateVar(action.values.target, action.values.data, action.values.action);
-          return actionPromise();
-        }
-
-        if (action.type === 'web-call') {
-          return makeRestCall(action.values)
-          .then(resp => {
+        console.log(`TERMINAL COMMAND: ${terminalCommand}`);
+        return cmd.get(terminalCommand, (err, resp) => {
+          console.log(`NODE res:${(resp)} `);
+          if (action.capture && action.capture.length > 0) {
             captureData(action, resp);
-            return actionPromise();
-          });
-        }
-        if (action.type === 'make-file') {
-          return new Promise(resolve2 => {
-            let writeData = action.values.data;
-            const dataOperations = _.map(action.values.dataOperations, op => {
-              return op.toLowerCase();
-            });
+          }
+          return actionPromise();
+        });
+      }
 
-            if (dataOperations.indexOf('jsonstringify') > -1) {
-              writeData = JSON.stringify(writeData);
+      if (action.type === 'set-var') {
+        updateVar(action.values.target, action.values.data, action.values.action);
+        return actionPromise();
+      }
+
+      if (action.type === 'boxAPI') {
+        const clientID = action.values.data.clientID;
+        const clientSecret = action.values.data.clientSecret;
+        const appAuth = action.values.data.appAuth;
+        const userId = action.values.data.userId;
+        const enterpriseId = action.values.data.enterpriseId;
+
+        if (action.values.action === 'initialize-app-auth') {
+          // Sets up a client using prescribed credentials and appAuth data
+          initializeBoxClient({ clientID, clientSecret, appAuth }, 'app-auth', { userId, enterpriseId });
+        }
+        return boxClient.users.get(userId)
+        .then(user => console.log(`user ${user}`));
+      }
+
+      if (action.type === 'web-call') {
+        return makeRestCall(action.values)
+        .then(resp => {
+          captureData(action, resp);
+          return actionPromise();
+        });
+      }
+      if (action.type === 'make-file') {
+        return new Promise(resolve2 => {
+          let writeData = action.values.data;
+          const dataOperations = _.map(action.values.dataOperations, op => {
+            return op.toLowerCase();
+          });
+
+          if (dataOperations.indexOf('jsonstringify') > -1) {
+            writeData = JSON.stringify(writeData);
+          }
+          return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
+            return resolve2();
+          });
+        })
+        .then(() => {
+          return actionPromise();
+        });
+      }
+      if (action.type === 'update-file') {
+        return new Promise(resolve2 => {
+          const dataOperations = _.map(action.values.dataOperations, op => {
+            return op.toLowerCase();
+          });
+          if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
+            console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
+          }
+          return new Promise(resolveRead => {
+            return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, readData) => {
+              if (err) {
+                return false;
+              }
+              let writeData = readData || '';
+          //    console.log(readData);
+              if (dataOperations.indexOf('jsonstringify') > -1) {
+                writeData = JSON.stringify(readData);
+              }
+
+              if (action.values.fileType.toLowerCase() === 'xml') {
+                return xmlParser.parseString(readData, (err, parsedXML) => {
+                  if (err) {
+                    console.log(`Error reading file:  ${err}`);
+                    return resolveRead(false);
+                  }
+                  for (let zz = 0; zz < action.values.data.length; ++zz) {
+                    const dataToInsert = action.values.data[zz];
+                    _.set(parsedXML, dataToInsert.path, dataToInsert.value);
+                  }
+                  return resolveRead(xmlBuilder.buildObject(parsedXML));
+                });
+              }
+            // Assumes text if no other type is supplied
+              for (let zz = 0; zz < action.values.data.length; ++zz) {
+                writeData += action.values.data[zz];
+              }
+              return resolveRead(writeData);
+            });
+          })
+          .then(writeData => {
+            if (!writeData) {
+              resolve2();
             }
+            console.log(`DATA TO  WRITE \r\n ${writeData}`);
             return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
               return resolve2();
             });
-          })
-          .then(() => {
-            return actionPromise();
           });
+        })
+        .then(() => {
+          return actionPromise();
+        });
+      }
+      return actionPromise();
+    })
+    .then(() => {
+      setTimeout(function() {
+        console.log(`Post-delay finished for ${action.name}`);
+        if (runCount < actions.length - 1) {
+          actions[runCount] = backupAction;
+          return runAction(actions, callback, runCount + 1)
         }
-        if (action.type === 'update-file') {
-          return new Promise(resolve2 => {
-            const dataOperations = _.map(action.values.dataOperations, op => {
-              return op.toLowerCase();
-            });
-            if (!fs.existsSync(`${process.cwd()}/${action.values.fileLocation}`)) {
-              console.log(`Exiting this step early, as the file does not exist at location : \r\n ${process.cwd()}/${action.values.fileLocation}`);
-            }
-            return new Promise(resolveRead => {
-              return fs.readFile(`${process.cwd()}/${action.values.fileLocation}`, 'utf8', (err, readData) => {
-                if (err) {
-                  return false;
-                }
-                let writeData = readData || '';
-            //    console.log(readData);
-                if (dataOperations.indexOf('jsonstringify') > -1) {
-                  writeData = JSON.stringify(readData);
-                }
-
-                if (action.values.fileType.toLowerCase() === 'xml') {
-                  return xmlParser.parseString(readData, (err, parsedXML) => {
-                    if (err) {
-                      console.log(`Error reading file:  ${err}`);
-                      return resolveRead(false);
-                    }
-                    for (let zz = 0; zz < action.values.data.length; ++zz) {
-                      const dataToInsert = action.values.data[zz];
-                      _.set(parsedXML, dataToInsert.path, dataToInsert.value);
-                    }
-                    return resolveRead(xmlBuilder.buildObject(parsedXML));
-                  });
-                }
-              // Assumes text if no other type is supplied
-                for (let zz = 0; zz < action.values.data.length; ++zz) {
-                  writeData += action.values.data[zz];
-                }
-                return resolveRead(writeData);
-              });
-            })
-            .then(writeData => {
-              if (!writeData) {
-                resolve2();
-              }
-              console.log(`DATA TO  WRITE \r\n ${writeData}`);
-              return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
-                return resolve2();
-              });
-            });
-          })
-          .then(() => {
-            return actionPromise();
-          });
+        else {
+          return callback();
         }
-        return actionPromise();
-      })
-      .then(() => {
-        setTimeout(function() {
-          console.log(`Post-delay finished for ${action.name}`);
-          if (runCount < actions.length - 1) {
-            actions[runCount] = backupAction;
-            return runAction(actions, callback, runCount + 1)
-          }
-          else {
-            return callback();
-          }
-        }, action.post_delay);
-      });
+      }, action.post_delay);
     });
+  });
 };
 
 const runOperation = (operation, callback, _runCount) => {
