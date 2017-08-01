@@ -13,6 +13,7 @@ const util = require('util');
 const xml2js = require('xml2js');
 const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
+const xamel = require('vow-xamel');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -202,7 +203,7 @@ const runAction = (actions, callback, _runCount) => {
                 }
 
                 if (action.values.fileType.toLowerCase() === 'xml') {
-                  return xmlParser.parseString(readData, (err, parsedXML) => {
+                  return xamel.parse(readData, (err, parsedXML) => {
                     if (err) {
                       console.log(`Error reading file:  ${err}`);
                       return resolveRead(false);
@@ -211,7 +212,10 @@ const runAction = (actions, callback, _runCount) => {
                       const dataToInsert = action.values.data[zz];
                       _.set(parsedXML, dataToInsert.path, dataToInsert.value);
                     }
-                    return resolveRead(xmlBuilder.buildObject(parsedXML));
+                    console.log(`WRITEDATA: \r\n ${JSON.stringify(parsedXML, 0, 2)}`);
+                    return xamel.serialize(parsedXML, serializedXML => {
+                      return resolveRead(serializedXML);
+                    });
                   });
                 }
               // Assumes text if no other type is supplied

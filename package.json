@@ -1,10 +1,10 @@
 {
   "name": "salvo",
-  "version": "0.2.98",
+  "version": "0.2.981",
   "description": "A JSON-based scripting and automation platform.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js"
   },
   "repository": {
     "type": "git",
@@ -24,6 +24,8 @@
     "json-query": "^2.2.2",
     "node-cmd": "^3.0.0",
     "node-rest-client": "^3.1.0",
+    "vow-xamel": "0.0.4",
+    "xamel": "^0.3.1",
     "xml2js": "^0.4.17"
   },
   "bin": {
