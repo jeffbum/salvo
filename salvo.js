@@ -11,14 +11,11 @@ const Client = require('node-rest-client').Client;
 const rClient = new Client();
 const util = require('util');
 const xml2js = require('xml2js');
-const xmlBuilder = new xml2js.Builder();
-const xmlParser = new xml2js.Parser();
-const xamel = require('vow-xamel');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   access_token:'TEMPORARY_TOKEN'
-}
+};
 
 const captureData = (action, respSet) => {
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
@@ -203,19 +200,18 @@ const runAction = (actions, callback, _runCount) => {
                 }
 
                 if (action.values.fileType.toLowerCase() === 'xml') {
-                  return xamel.parse(readData, (err, parsedXML) => {
-                    if (err) {
-                      console.log(`Error reading file:  ${err}`);
+                  const xmlBuilder = new xml2js.Builder();
+                  const xmlParser = new xml2js.Parser(action.values.parseParameters || {});
+                  return xmlParser.parseString(readData, (err2, parsedXML) => {
+                    if (err2) {
+                      console.log(`Error reading file:  ${err2}`);
                       return resolveRead(false);
                     }
                     for (let zz = 0; zz < action.values.data.length; ++zz) {
                       const dataToInsert = action.values.data[zz];
                       _.set(parsedXML, dataToInsert.path, dataToInsert.value);
                     }
-                    console.log(`WRITEDATA: \r\n ${JSON.stringify(parsedXML, 0, 2)}`);
-                    return xamel.serialize(parsedXML, serializedXML => {
-                      return resolveRead(serializedXML);
-                    });
+                    return resolveRead(xmlBuilder.buildObject(parsedXML));
                   });
                 }
               // Assumes text if no other type is supplied
