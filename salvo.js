@@ -225,7 +225,7 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-              console.log(`DATA TO  WRITE \r\n ${writeData}`);
+            //  console.log(`DATA TO  WRITE \r\n ${writeData}`);
               return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
