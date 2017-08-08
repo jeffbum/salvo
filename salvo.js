@@ -18,30 +18,45 @@ const storedValues = {
   datetimeRun: new Date().valueOf(),
   access_token:'TEMPORARY_TOKEN'
 }
+const extractData = ((extractionData, method, extractionModifiers) => {
+  let extractedData = null;
+  if (method === 'string') {
+    extractedData = extractionData;
+  }
+  if (method === 'object') {
+    extractedData = extractionModifiers.source === '$$all$$' ? extractionData : _.get(extractionData, extractionModifiers.source);
+  }
+  if (method === 'array') {
+    extractedData = extractionModifiers.source === '$$all$$' ? extractionData : extractionData[extractionModifiers.source];
+  }
+  if (method === 'regex') {
+    // There is an assumption that the first index will just be the match, and everything else is the capture
+    const capRegex = new RegExp(extractionModifiers.source);
+    extractedData = extractionModifiers.regexIndex ? capRegex.exec(extractionData)[extractionModifiers.regexIndex] : capRegex.exec(extractionData);
+  }
+  return extractedData;
+});
 
 const captureData = (action, respSet) => {
+  console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
     for (const captureItem of action.capture) {
       // First, we get the proper data
       let foundData = null;
-      if (captureItem.type === 'string') {
-        foundData = data;
-      }
-      if (captureItem.type === 'object') {
-        foundData = captureItem.source === '$$all$$' ? data : _.get(data, captureItem.source);
-      }
-      if (captureItem.type === 'array') {
-        foundData = captureItem.source === '$$all$$' ? data : data[captureItem.source];
-      }
-      if (captureItem.type === 'regex') {
-        // There is an assumption that the first index will just be the match, and everything else is the capture
-        const capRegex = new RegExp(captureItem.source);
-        foundData = captureItem.regexIndex ? capRegex.exec(data)[captureItem.regexIndex] : capRegex.exec(data);
-      }
+      foundData = extractData(data, captureItem.type, { source: captureItem.source });
 
       // Now that the data is set, we save it
       if (captureItem.captureType === 'set') {
-        storedValues[captureItem.target] = foundData;
+        if (captureItem.type === 'object') {
+          // This logic is used as to assign multiple properties to a complex object captureItem
+          const objectWithProperties = {};
+          for (const itemValue of captureItem.values) {
+            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, { source: itemValue.source });
+          }
+          storedValues[captureItem.target] = objectWithProperties;
+        } else {
+          storedValues[captureItem.target] = foundData;
+        }
       }
       if (captureItem.captureType === 'push') {
         if (!storedValues[captureItem.target]) {
@@ -144,9 +159,10 @@ const runAction = (actions, callback, _runCount) => {
           }
           console.log(`TERMINAL COMMAND: ${terminalCommand}`);
           return cmd.get(terminalCommand, (err, resp) => {
+            console.log(`action res:${JSON.stringify(action)} `);
             console.log(`NODE res:${(resp)} `);
             if (action.capture && action.capture.length > 0) {
-              captureData(action, resp);
+              captureData(action, "UserModel\n    find\n\r      ✓ should return all users\n\n\n  150 passing (2m)\n  6 pending\n\n");
             }
             return actionPromise();
           });
