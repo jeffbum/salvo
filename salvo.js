@@ -51,7 +51,7 @@ const extractData = ((extractionData, method, extractionModifiers) => {
 });
 
 const captureData = (action, respSet) => {
-  console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
+  //console.log(`RESPSET: ${JSON.stringify(respSet, 0, 2)}`);
   const data = (typeof respSet).toLowerCase() === 'object' ? respSet[0] : respSet;
     for (const captureItem of action.capture) {
       // First, we get the proper data
@@ -60,16 +60,14 @@ const captureData = (action, respSet) => {
 
       // Now that the data is set, we save it
       if (captureItem.captureType === 'set') {
-        if (captureItem.type === 'object') {
-          // This logic is used as to assign multiple properties to a complex object captureItem
+        if (captureItem.values) {
+          // this is used when you want to save multiple values to the same stored object
           const objectWithProperties = {};
           for (const itemValue of captureItem.values) {
             objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
           }
-          storedValues[captureItem.target] = objectWithProperties;
-        } else {
-          storedValues[captureItem.target] = foundData;
         }
+        storedValues[captureItem.target] = foundData;
       }
       if (captureItem.captureType === 'push') {
         if (!storedValues[captureItem.target]) {
