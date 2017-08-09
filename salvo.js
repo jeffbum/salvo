@@ -56,7 +56,7 @@ const captureData = (action, respSet) => {
     for (const captureItem of action.capture) {
       // First, we get the proper data
       let foundData = null;
-      foundData = extractData(data, captureItem.type, captureItem.extractionModifiers);
+      foundData = extractData(data, captureItem.type, captureItem.extractionModifiers || { source: captureItem.source });
 
       // Now that the data is set, we save it
       if (captureItem.captureType === 'set') {

@@ -1,6 +1,6 @@
 {
   "name": "salvo",
-  "version": "0.3.0",
+  "version": "0.3.001",
   "description": "A JSON-based scripting and automation platform.",
   "main": "index.js",
   "scripts": {
