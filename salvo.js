@@ -32,7 +32,20 @@ const extractData = ((extractionData, method, extractionModifiers) => {
   if (method === 'regex') {
     // There is an assumption that the first index will just be the match, and everything else is the capture
     const capRegex = new RegExp(extractionModifiers.source);
-    extractedData = extractionModifiers.regexIndex ? capRegex.exec(extractionData)[extractionModifiers.regexIndex] : capRegex.exec(extractionData);
+    const capturedRegex = capRegex.exec(extractionData);
+    extractedData = capturedRegex;
+    if (capturedRegex) {
+      extractedData = extractionModifiers.regexIndex ? capturedRegex[extractionModifiers.regexIndex] : capturedRegex;
+    }
+  }
+  if (extractionModifiers.forceType) {
+    const forceType = extractionModifiers.forceType;
+    if (forceType.toLowerCase() === 'number') {
+      return Number(extractedData);
+    }
+    if (forceType.toLowerCase() === 'string') {
+      return extractedData.toString();
+    }
   }
   return extractedData;
 });
@@ -51,7 +64,7 @@ const captureData = (action, respSet) => {
           // This logic is used as to assign multiple properties to a complex object captureItem
           const objectWithProperties = {};
           for (const itemValue of captureItem.values) {
-            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, { source: itemValue.source });
+            objectWithProperties[itemValue.key] = extractData(data, itemValue.type, itemValue.extractionModifiers);
           }
           storedValues[captureItem.target] = objectWithProperties;
         } else {
@@ -162,7 +175,7 @@ const runAction = (actions, callback, _runCount) => {
             console.log(`action res:${JSON.stringify(action)} `);
             console.log(`NODE res:${(resp)} `);
             if (action.capture && action.capture.length > 0) {
-              captureData(action, "UserModel\n    find\n\r      ✓ should return all users\n\n\n  150 passing (2m)\n  6 pending\n\n");
+              captureData(action, resp);
             }
             return actionPromise();
           });
