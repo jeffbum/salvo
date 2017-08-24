@@ -9,4 +9,4 @@ add if directive
 add while directive
 Combine write-file and update-file into a single action type
 Make do until (time)
-Add email capabilities (read, use non-gmail accounts)
+Fix and finish email (fix/check send, add attachments)
