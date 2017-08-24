@@ -1,6 +1,6 @@
 {
   "name": "salvo",
-  "version": "0.3.002",
+  "version": "0.3.33",
   "description": "A JSON-based scripting and automation platform.",
   "main": "index.js",
   "scripts": {
@@ -24,6 +24,7 @@
     "json-query": "^2.2.2",
     "node-cmd": "^3.0.0",
     "node-rest-client": "^3.1.0",
+    "nodemailer": "^4.0.1",
     "xml2js": "^0.4.17"
   },
   "bin": {

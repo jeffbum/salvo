@@ -13,6 +13,7 @@ const util = require('util');
 const xml2js = require('xml2js');
 const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
+const email = require('./capabilities/email/email.js');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -45,6 +46,9 @@ const extractData = ((extractionData, method, extractionModifiers) => {
     }
     if (forceType.toLowerCase() === 'string') {
       return extractedData.toString();
+    }
+    if (forceType.toLowerCase() === 'jsonStringify') {
+      return JSON.stringify(extractedData, 0, 2);
     }
   }
   return extractedData;
@@ -184,6 +188,11 @@ const runAction = (actions, callback, _runCount) => {
           return actionPromise();
         }
 
+        if (action.type === 'send-email') {
+          email.sendEmail(action.values.accountProperties, action.values.emailProperties);
+          return actionPromise();
+        }
+
         if (action.type === 'web-call') {
           return makeRestCall(action.values)
           .then(resp => {
@@ -243,7 +252,11 @@ const runAction = (actions, callback, _runCount) => {
                 }
               // Assumes text if no other type is supplied
                 for (let zz = 0; zz < action.values.data.length; ++zz) {
-                  writeData += action.values.data[zz];
+                  if (action.values.dataOperations.indexOf('append') >= 0) {
+                    writeData += action.values.data[zz];
+                  } else {
+                    writeData = action.values.data[zz];
+                  }
                 }
                 return resolveRead(writeData);
               });
