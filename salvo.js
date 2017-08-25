@@ -14,11 +14,13 @@ const xml2js = require('xml2js');
 const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
 const email = require('./capabilities/email/email.js');
+const textEditor = require('./capabilities/file/text.js');
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
   access_token:'TEMPORARY_TOKEN'
-}
+};
+
 const extractData = ((extractionData, method, extractionModifiers) => {
   let extractedData = null;
   if (method === 'string') {
@@ -188,6 +190,13 @@ const runAction = (actions, callback, _runCount) => {
           return actionPromise();
         }
 
+        if (action.type === 'replace-file-text') {
+          return textEditor.editText(`${process.cwd()}/${action.values.fileLocation}`, action.values.replacements)
+          .then(() => {
+            return actionPromise();
+          });
+        }
+
         if (action.type === 'send-email') {
           email.sendEmail(action.values.accountProperties, action.values.emailProperties);
           return actionPromise();
@@ -238,9 +247,11 @@ const runAction = (actions, callback, _runCount) => {
                 }
 
                 if (action.values.fileType.toLowerCase() === 'xml') {
-                  return xmlParser.parseString(readData, (err, parsedXML) => {
-                    if (err) {
-                      console.log(`Error reading file:  ${err}`);
+                  const xmlBuilder = new xml2js.Builder();
+                  const xmlParser = new xml2js.Parser(action.values.parseParameters || {});
+                  return xmlParser.parseString(readData, (err2, parsedXML) => {
+                    if (err2) {
+                      console.log(`Error reading file:  ${err2}`);
                       return resolveRead(false);
                     }
                     for (let zz = 0; zz < action.values.data.length; ++zz) {
@@ -265,7 +276,7 @@ const runAction = (actions, callback, _runCount) => {
               if (!writeData) {
                 resolve2();
               }
-              console.log(`DATA TO  WRITE \r\n ${writeData}`);
+            //  console.log(`DATA TO  WRITE \r\n ${writeData}`);
               return fs.writeFile(`${process.cwd()}/${action.values.fileLocation}`, writeData, () => {
                 return resolve2();
               });
@@ -333,7 +344,7 @@ console.log(`Beginning salvo ${salvoScript.name}`);
 
 return Promise.map(salvoScript.preloads, preloadFile => {
   // Loads each pre-salvo file.  Format requires './filename'
-  return require(preloadFile);
+  return require(`${process.cwd()}/${preloadFile}`);
 })
 .then(loadedFiles => {
   console.log(`Loaded values: ${JSON.stringify(loadedFiles)}`);

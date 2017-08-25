@@ -1,4 +1,3 @@
-XML support
 JSON insertion
 appending text
 when setting vars, accept array of var values
@@ -10,3 +9,8 @@ add while directive
 Combine write-file and update-file into a single action type
 Make do until (time)
 Fix and finish email (fix/check send, add attachments)
+add time to logs
+fix xml conversion
+-When doing the file update in replace file, it is only incrementing in the file once,
+    despite the user_threads variable updating. The file itself updates once, but not on any
+    subsequent ones.  Modified files output is blank on subsequent ones
