@@ -1,6 +1,6 @@
 JSON insertion
 appending text
-when setting vars, accept array of var values
+when setting vars, accept array of var targets
 support express calling of scripts (may not be necessary considering terminal command)
 add scaled logging class, so logs can be controlled via a setting
 make update-file create a file if one doesn't exist
@@ -11,6 +11,5 @@ Make do until (time)
 Fix and finish email (fix/check send, add attachments)
 add time to logs
 fix xml conversion
--When doing the file update in replace file, it is only incrementing in the file once,
-    despite the user_threads variable updating. The file itself updates once, but not on any
-    subsequent ones.  Modified files output is blank on subsequent ones
+Allow value substitution on the operations objects
+Add force type to variable increments, to fix issue where a variable in the config concats instead of increments

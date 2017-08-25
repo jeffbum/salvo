@@ -10,7 +10,9 @@ let mailTransporter = null;
 const login = ((service, user, pass) => {
   console.log('logging in');
   mailTransporter = nodeMailer.createTransport({
-    service,
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
     auth: {
       user,
       pass
@@ -26,7 +28,7 @@ const sendEmail = ((accountProperties, emailProperties) => {
     options.to = options.to.join(', ');
   }
   console.log(mailTransporter);
-  return mailTransporter.sendMail(options, function(error, info){
+  return mailTransporter.sendMail(options, (error, info) => {
     if (error) {
       console.log(error);
     } else {

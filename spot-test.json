@@ -1,0 +1,32 @@
+{
+  "name": "Email sample Salvo",
+  "preloads": [],
+  "operations": [
+    {
+      "name": "Single simple email",
+      "iterations": 1,
+      "actions": [
+        {
+          "name": "Send email",
+          "type": "send-email",
+          "values": {
+            "accountProperties": {
+              "user": "chillwing@gmail.com",
+              "password": "Uncl3M1ck",
+              "service": "gmail"
+            },
+            "emailProperties": {
+              "to": "chillwing@gmail.com",
+							"from":"chillwing@gmail.com",
+              "cc": [],
+              "bcc": [],
+              "attachments": [],
+              "subject": "This is a test email (subject)",
+              "text": "This is the email's body"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
