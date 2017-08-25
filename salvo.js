@@ -154,12 +154,13 @@ const substituteValues = object => {
 
 const runAction = (actions, callback, _runCount) => {
     const runCount = _runCount || 0;
-    const action = actions[runCount];
+    const action = JSON.parse(JSON.stringify(actions[runCount]));
     const backupAction = JSON.parse(JSON.stringify(action));
     substituteValues(action);
+    console.log(`action res:${JSON.stringify(action)} `);
     return new Promise(preDelay => {
       setTimeout(function () {
-        console.log(`Pre-action delay finished for ${action.name}`);
+      //  console.log(`Pre-action delay finished for ${action.name}`);
         // Execute action depending on type
         preDelay();
       }, action.pre_delay);
@@ -176,7 +177,6 @@ const runAction = (actions, callback, _runCount) => {
           }
           console.log(`TERMINAL COMMAND: ${terminalCommand}`);
           return cmd.get(terminalCommand, (err, resp) => {
-            console.log(`action res:${JSON.stringify(action)} `);
             console.log(`NODE res:${(resp)} `);
             if (action.capture && action.capture.length > 0) {
               captureData(action, resp);
