@@ -15,6 +15,7 @@ const xmlBuilder = new xml2js.Builder();
 const xmlParser = new xml2js.Parser();
 const email = require('./capabilities/email/email.js');
 const textEditor = require('./capabilities/file/text.js');
+const time = require('time-js')
 
 const storedValues = {
   datetimeRun: new Date().valueOf(),
@@ -305,11 +306,18 @@ const runAction = (actions, callback, _runCount) => {
 
 const runOperation = (operation, callback, _runCount) => {
   const runCount = _runCount || 0;
+  let nowTime = Number(new Date())
+  let runTime = Number(new time(operation.run_at).nextDate())
+  console.log(nowTime);
+  console.log(runTime);
+  let timeout = runTime - nowTime
+  console.log(timeout);
+
   if (runCount >= operation.iterations) {
     return setTimeout(function() {
       console.log(`Finished operation delay for ${operation.name}`);
       callback();
-    }, operation.post_delay_op);
+    }, operation.post_delay_op || 5000);
   }
   setTimeout(function () {
     console.log(`Finished pre-loop delay for ${operation.name}`)
@@ -323,9 +331,9 @@ const runOperation = (operation, callback, _runCount) => {
         return runOperation(operation, callback, runCount + 1);
       }
       callback();
-    }, operation.post_delay_loop);
+    }, operation.post_delay_loop || 5000);
   });
-  }, operation.pre_delay_loop);
+}, operation.pre_delay_loop || timeout || 5000);
 };
 
 program
