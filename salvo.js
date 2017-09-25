@@ -307,11 +307,9 @@ const runAction = (actions, callback, _runCount) => {
 const runOperation = (operation, callback, _runCount) => {
   const runCount = _runCount || 0;
   let nowTime = Number(new Date())
-  let runTime = Number(new time(operation.run_at).nextDate())
-  console.log(nowTime);
-  console.log(runTime);
+  let runTime = new time(operation.run_at).isValid() ? Number(new time(operation.run_at).nextDate()) : new Date(operation.run_at)
+
   let timeout = runTime - nowTime
-  console.log(timeout);
 
   if (runCount >= operation.iterations) {
     return setTimeout(function() {
