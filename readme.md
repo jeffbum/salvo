@@ -132,7 +132,7 @@
       ]
     }`
 
-  6. web-call
+  6. web-call example:
 
   `{
       "name": "Uploads a file",
@@ -169,7 +169,7 @@
       ]
     }`
 
-  7. make-file
+  7. make-file example:
 
     `{
 				"name": "POST test",
